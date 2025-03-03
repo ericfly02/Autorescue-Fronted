@@ -3,18 +3,19 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Mic, MicOff, Volume2 } from 'lucide-react';
 
 interface VoiceRecognitionProps {
-  onRecognized: () => void;
+  onRecognized: (activated: boolean) => void;
   isListening: boolean;
   activationPhrase?: string;
+  deactivatePhrase?: string;
 }
 
 const VoiceRecognition: React.FC<VoiceRecognitionProps> = ({
   onRecognized,
   isListening,
-  activationPhrase = "autorescue ayuda"
+  activationPhrase = "sí",
+  deactivatePhrase = "no"
 }) => {
   const [transcript, setTranscript] = useState<string>("");
-  const [confidence, setConfidence] = useState<number>(0);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const activationPhraseRef = useRef<string>(activationPhrase.toLowerCase());
 
@@ -43,7 +44,6 @@ const VoiceRecognition: React.FC<VoiceRecognitionProps> = ({
         const transcript = event.results[i][0].transcript.toLowerCase();
         if (event.results[i].isFinal) {
           finalTranscript += transcript;
-          setConfidence(event.results[i][0].confidence);
         } else {
           interimTranscript += transcript;
         }
@@ -55,7 +55,11 @@ const VoiceRecognition: React.FC<VoiceRecognitionProps> = ({
       // Check if the activation phrase is detected
       if (currentTranscript.includes(activationPhraseRef.current)) {
         console.log("Activation phrase detected:", activationPhraseRef.current);
-        onRecognized();
+        onRecognized(true);
+      }
+      else if(currentTranscript.includes(deactivatePhrase)){
+        console.log("Deactivation phrase detected:", deactivatePhrase);
+        onRecognized(false);
       }
     };
 
@@ -116,8 +120,8 @@ const VoiceRecognition: React.FC<VoiceRecognitionProps> = ({
           </div>
           
           <div className="mt-4 text-center">
-            <p className="text-sm font-medium text-muted-foreground">
-              Di "<span className="text-primary font-bold">{activationPhrase}</span>" para activar la asistencia
+            <p className="text-sm font-medium text-muted-foreground"> 
+              ¿Es una emergencia? Di "<span className="text-primary font-bold">{activationPhrase}</span>" para activar la asistencia automatica
             </p>
             {transcript && (
               <div className="mt-2 p-3 glass rounded-lg max-w-md animate-scale-in">
