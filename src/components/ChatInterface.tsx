@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Camera, Mic, X } from 'lucide-react';
-import ChatbaseService from '../services/chatbaseService';
 import axios from 'axios';
 
 // You will need to set these values from environment variables or a config
@@ -26,12 +25,39 @@ const ChatInterface: React.FC = () => {
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  
-  const chatbaseService = new ChatbaseService(CHATBASE_API_KEY, CHATBASE_CHAT_ID);
-
   useEffect(() => {
     scrollToBottom();
   }, [messages, currentStreamedMessage]);
+
+  useEffect(() => {
+    const response = axios.post(
+      CHATBASE_API_URL,
+      {
+        messages:[
+          {
+            content: "hola",
+            role: "user"
+          },
+      ],
+        chatbotId: CHATBASE_CHAT_ID,
+        stream: true,
+        temperature: 0,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${CHATBASE_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        responseType: 'stream',
+      }
+    ).then((response) => {
+      setMessages(prev => [...prev, {
+        content: response.data,
+        role: 'assistant',
+        timestamp: new Date()
+      }]);
+    });
+  }, []);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });

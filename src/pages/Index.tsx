@@ -6,6 +6,7 @@ import { Shield, ShieldAlert } from 'lucide-react';
 import VoiceRecognition from '@/components/VoiceRecognition';
 import LoadingScreen from '@/components/LoadingScreen';
 import ChatInterface from '@/components/ChatInterface';
+import axios from 'axios';
 
 // Application states
 type AppState =
@@ -30,8 +31,10 @@ const Index = () => {
     setProcessingMessage("Verificando su solicitud...");
 
     if (activated) {
+      await axios.post("/needHelp", { serialNumber: "1HGCM82633A123456" })
       setAppState('completed');
     } else {
+      await axios.post("/deviceStatus", { serialNumber: "1HGCM82633A123456" })
       setAppState('chat');
     }
   };
@@ -134,7 +137,7 @@ const Index = () => {
       </main>
 
       <footer className="p-4 text-center text-sm text-muted-foreground border-t border-border/50">
-        <p>© 2023 AutoRescue · Asistencia en accidentes de tráfico</p>
+        <p>© 2025 AutoRescue · Asistencia en accidentes de tráfico</p>
       </footer>
     </div>
   );
