@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Camera, Mic, X } from 'lucide-react';
+import { Send, Camera, Mic, X, LoaderCircle, MessageCircle } from 'lucide-react';
 import axios from 'axios';
 
 // You will need to set these values from environment variables or a config
@@ -20,43 +20,63 @@ const ChatInterface: React.FC = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [currentStreamedMessage, setCurrentStreamedMessage] = useState('');
+  const [initialLoading, setInitialLoading] = useState(true);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
   
   useEffect(() => {
     scrollToBottom();
   }, [messages, currentStreamedMessage]);
 
   useEffect(() => {
-    const response = axios.post(
-      CHATBASE_API_URL,
-      {
-        messages:[
+    const fetchInitialMessage = async () => {
+      try {
+        setInitialLoading(true);
+        const response = await axios.post(
+          CHATBASE_API_URL,
           {
-            content: "hola",
-            role: "user"
+            messages:[
+              {
+                content: "hola",
+                role: "user"
+              },
+            ],
+            chatbotId: CHATBASE_CHAT_ID,
+            stream: true,
+            temperature: 0,
           },
-      ],
-        chatbotId: CHATBASE_CHAT_ID,
-        stream: true,
-        temperature: 0,
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${CHATBASE_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        responseType: 'stream',
+          {
+            headers: {
+              Authorization: `Bearer ${CHATBASE_API_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            responseType: 'text', // Changed to text for proper handling
+          }
+        );
+        
+        // Initial welcome message
+        setMessages([{
+          content: response.data || "¡Hola! Soy el asistente de AutoRescue. ¿En qué puedo ayudarte hoy?",
+          role: 'assistant',
+          timestamp: new Date()
+        }]);
+      } catch (error) {
+        console.error('Error fetching initial message:', error);
+        // Fallback welcome message
+        setMessages([{
+          content: "¡Hola! Soy el asistente de AutoRescue. ¿En qué puedo ayudarte con el parte de accidente?",
+          role: 'assistant',
+          timestamp: new Date()
+        }]);
+      } finally {
+        setInitialLoading(false);
       }
-    ).then((response) => {
-      setMessages(prev => [...prev, {
-        content: response.data,
-        role: 'assistant',
-        timestamp: new Date()
-      }]);
-    });
+    };
+
+    fetchInitialMessage();
   }, []);
 
   const scrollToBottom = () => {
@@ -82,82 +102,49 @@ const ChatInterface: React.FC = () => {
         content: msg.content,
         role: msg.role
       }));
+      
       setIsStreaming(true);
       setCurrentStreamedMessage('');
-      debugger
+      
       const response = await axios.post(
         CHATBASE_API_URL,
         {
-          messages:chatbaseMessages,
+          messages: chatbaseMessages,
           chatbotId: CHATBASE_CHAT_ID,
-          stream: true,
+          stream: false, // Set to false for now for simplicity
           temperature: 0,
         },
         {
           headers: {
             Authorization: `Bearer ${CHATBASE_API_KEY}`,
             'Content-Type': 'application/json',
-          },
-          responseType: 'stream',
+          }
         }
       );
-          
-      //const stream = await chatbaseService.streamChatMessage(chatbaseMessages);
-
+      
+      // Add bot response
       setMessages(prev => [...prev, {
-        content: response.data,
+        content: response.data?.text || "Lo siento, hubo un problema al procesar tu solicitud.",
         role: 'assistant',
         timestamp: new Date()
       }]);
-      setCurrentStreamedMessage('');
-      setIsLoading(false);
       
     } catch (error) {
       console.error('Error sending message:', error);
-      setIsLoading(false);
-      debugger
+      
       // Add error message
       const errorMessage: Message = {
-        content: 'Sorry, there was an error processing your request.',
+        content: 'Lo siento, hubo un error al procesar tu solicitud.',
         role: 'assistant',
         timestamp: new Date()
       };
       
       setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+      setIsStreaming(false);
+      setCurrentStreamedMessage('');
     }
-  };
-
-  const startSpeechRecognition = () => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      console.error('Speech recognition not supported in this browser.');
-      return;
-    }
-
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
-    }
-
-    const recognition = new SpeechRecognition();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = 'es-ES';
-
-    recognition.onresult = (event: SpeechRecognitionEvent) => {
-      const transcript = Array.from(event.results)
-        .map(result => result[0].transcript)
-        .join('');
-
-      setInputValue(transcript);
-    };
-
-    recognition.onend = () => {
-      setIsRecording(false);
-    };
-
-    recognition.start();
-    recognitionRef.current = recognition;
-    setIsRecording(true);
   };
 
   const stopSpeechRecognition = () => {
@@ -206,53 +193,104 @@ const ChatInterface: React.FC = () => {
       handleSendMessage();
     }
   };
-
   const formatTimestamp = (date: Date) => {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   return (
-    <div className="flex flex-col h-full max-w-3xl mx-auto bg-black/20 backdrop-blur-lg rounded-2xl overflow-hidden border border-white/10 shadow-xl text-white">
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((message, index) => (
-          <div 
-            key={index} 
-            className={`flex flex-col ${message.role === 'user' ? 'items-end' : 'items-start'}`}
-          >
-            <div 
-              className={`max-w-[80%] p-3 rounded-xl ${
-                message.role === 'user' 
-                  ? 'bg-blue-600 text-white rounded-tr-none' 
-                  : 'bg-gray-700 text-white rounded-tl-none'
-              }`}
-            >
-              {message.content}
-            </div>
-            <span className="text-xs text-gray-400 mt-1">
-              {formatTimestamp(message.timestamp)}
-            </span>
+    <div 
+      ref={chatContainerRef}
+      className="flex flex-col h-full w-full max-w-3xl mx-auto bg-gradient-to-br from-black/30 to-black/40 backdrop-blur-lg rounded-2xl overflow-hidden border border-white/20 shadow-[0_8px_32px_rgba(0,0,0,0.25)] text-white transition-all duration-300 ease-in-out"
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-black/40">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
+            <MessageCircle size={20} className="text-white" />
           </div>
-        ))}
-        
-        {isStreaming && (
-          <div className="flex flex-col items-start">
-            <div className="max-w-[80%] p-3 rounded-xl bg-gray-700 text-white rounded-tl-none">
-              {currentStreamedMessage || '...'}
-            </div>
-            <span className="text-xs text-gray-400 mt-1">
-              {formatTimestamp(new Date())}
-            </span>
+          <div>
+            <h2 className="font-bold text-lg">AutoRescue</h2>
+            <p className="text-xs text-gray-300">Asistente para partes de accidente</p>
           </div>
+        </div>
+        <div className="flex space-x-1">
+          <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+          <span className="text-xs text-gray-300">En línea</span>
+        </div>
+      </div>
+      
+      {/* Messages Area */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-transparent to-black/10">
+        {initialLoading ? (
+          <div className="flex flex-col items-center justify-center h-full py-10">
+            <LoaderCircle size={40} className="text-blue-400 animate-spin mb-4" />
+            <p className="text-gray-300 animate-pulse">Iniciando conversación...</p>
+          </div>
+        ) : messages.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full py-10 text-center">
+            <div className="w-16 h-16 mb-4 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
+              <MessageCircle size={32} className="text-white" />
+            </div>
+            <h3 className="text-xl font-bold mb-2">¡Bienvenido a AutoRescue!</h3>
+            <p className="text-gray-300 max-w-md">
+              Estoy aquí para ayudarte con el parte de accidente. ¿En qué puedo asistirte hoy?
+            </p>
+          </div>
+        ) : (
+          <>
+            {messages.map((message, index) => (
+              <div 
+                key={index} 
+                className={`flex flex-col ${message.role === 'user' ? 'items-end' : 'items-start'} animate-fade-in`}
+              >
+                <div 
+                  className={`max-w-[85%] p-3.5 rounded-2xl shadow-md ${
+                    message.role === 'user' 
+                      ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-tr-none transform hover:scale-[1.01] transition-transform' 
+                      : 'bg-gradient-to-r from-gray-700/90 to-gray-800/90 text-white rounded-tl-none border border-white/5'
+                  }`}
+                >
+                  {message.content}
+                </div>
+                <div className="flex items-center space-x-2 mt-1 px-1">
+                  {message.role === 'assistant' && (
+                    <div className="w-5 h-5 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs">
+                      A
+                    </div>
+                  )}
+                  <span className="text-xs text-gray-400">
+                    {formatTimestamp(message.timestamp)}
+                  </span>
+                </div>
+              </div>
+            ))}
+            
+            {isStreaming && (
+              <div className="flex flex-col items-start animate-fade-in">
+                <div className="max-w-[85%] p-3.5 rounded-2xl shadow-md bg-gradient-to-r from-gray-700/90 to-gray-800/90 text-white rounded-tl-none border border-white/5">
+                  <div className="flex items-center space-x-2">
+                    <div className="flex space-x-1">
+                      <span className="w-2 h-2 rounded-full bg-gray-400 animate-pulse"></span>
+                      <span className="w-2 h-2 rounded-full bg-gray-400 animate-pulse delay-100"></span>
+                      <span className="w-2 h-2 rounded-full bg-gray-400 animate-pulse delay-200"></span>
+                    </div>
+                    <span className="text-sm text-gray-300">Escribiendo</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
         )}
-        
         <div ref={messagesEndRef} />
       </div>
       
-      <div className="p-3 border-t border-white/10 bg-black/30">
-        <div className="flex items-center space-x-2">
+      {/* Input Area */}
+      <div className="p-4 border-t border-white/10 bg-black/50 backdrop-blur-md">
+        <div className="flex items-center space-x-3">
           <button 
             onClick={triggerImageUpload}
-            className="p-2 rounded-full text-gray-300 hover:text-white hover:bg-gray-700 transition-colors"
+            className="p-2.5 rounded-full text-gray-300 hover:text-white hover:bg-blue-600/30 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+            title="Subir imagen"
           >
             <Camera size={20} />
           </button>
@@ -270,16 +308,18 @@ const ChatInterface: React.FC = () => {
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Type a message..."
-              className="w-full bg-gray-800/50 border border-gray-700 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-white"
+              placeholder="Escribe un mensaje..."
+              className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-none text-white placeholder-gray-400 shadow-inner transition-all duration-200"
               rows={1}
-              style={{ minHeight: '44px', maxHeight: '120px' }}
+              style={{ minHeight: '50px', maxHeight: '120px' }}
+              disabled={isLoading || initialLoading}
             />
             
             {isRecording && (
               <button 
                 onClick={stopSpeechRecognition}
-                className="absolute right-2 top-2 p-1 rounded-full bg-red-500 text-white hover:bg-red-600 transition-colors"
+                className="absolute right-3 top-3 p-1.5 rounded-full bg-red-500 text-white hover:bg-red-600 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500/50"
+                title="Detener grabación"
               >
                 <X size={16} />
               </button>
@@ -288,26 +328,42 @@ const ChatInterface: React.FC = () => {
           
           <button
             onClick={toggleRecording}
-            className={`p-2 rounded-full transition-colors ${
+            className={`p-2.5 rounded-full transition-all duration-200 focus:outline-none focus:ring-2 ${
               isRecording 
-                ? 'bg-red-500 text-white' 
-                : 'text-gray-300 hover:text-white hover:bg-gray-700'
+                ? 'bg-red-500 text-white focus:ring-red-500/50' 
+                : 'text-gray-300 hover:text-white hover:bg-blue-600/30 focus:ring-blue-500/50'
             }`}
+            disabled={isLoading || initialLoading}
+            title={isRecording ? "Detener grabación" : "Iniciar grabación de voz"}
           >
             <Mic size={20} />
           </button>
           
           <button
             onClick={handleSendMessage}
-            disabled={isLoading || inputValue.trim() === ''}
-            className={`p-2 rounded-full ${
-              isLoading || inputValue.trim() === '' 
-                ? 'text-gray-500 bg-gray-700 cursor-not-allowed' 
-                : 'text-white bg-blue-600 hover:bg-blue-700'
-            } transition-colors`}
+            disabled={isLoading || initialLoading || inputValue.trim() === ''}
+            className={`p-2.5 rounded-full focus:outline-none focus:ring-2 transition-all duration-200 ${
+              isLoading || initialLoading || inputValue.trim() === '' 
+                ? 'bg-gray-700/50 text-gray-500 cursor-not-allowed' 
+                : 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:shadow-lg hover:from-blue-500 hover:to-blue-600 focus:ring-blue-500/50 transform hover:scale-105'
+            }`}
+            title="Enviar mensaje"
           >
-            <Send size={20} />
+            {isLoading ? (
+              <LoaderCircle size={20} className="animate-spin" />
+            ) : (
+              <Send size={20} />
+            )}
           </button>
+        </div>
+        
+        {/* Status indicator */}
+        <div className="flex justify-center mt-2">
+          <p className="text-xs text-gray-400">
+            {isLoading ? 'Procesando mensaje...' : 
+             isRecording ? 'Grabando audio...' : 
+             ''}
+          </p>
         </div>
       </div>
     </div>
