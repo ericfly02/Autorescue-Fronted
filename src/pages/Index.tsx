@@ -31,10 +31,10 @@ const Index = () => {
     setProcessingMessage("Verificando su solicitud...");
 
     if (activated) {
-      //await axios.post("http://127.0.0.1:8084/api/autorescue/needHelp", { serialNumber: "1HGCM82633A123456" })
+      await axios.post("http://127.0.0.1:8084/api/autorescue/needHelp", { serialNumber: "1HGCM82633A123456" })
       setAppState('completed');
     } else {
-      //await axios.post("http://127.0.0.1:8084/api/autorescue/deviceStatus", { serialNumber: "1HGCM82633A123456" })
+      await axios.post("http://127.0.0.1:8084/api/autorescue/deviceStatus", { serialNumber: "1HGCM82633A123456" })
       setAppState('chat');
     }
   };
