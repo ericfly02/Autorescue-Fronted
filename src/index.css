@@ -179,3 +179,31 @@ textarea {
 .float {
   animation: float 6s ease-in-out infinite;
 }
+
+@layer components {
+  .message-bubble {
+    @apply relative max-w-md px-4 py-2 rounded-lg shadow-sm transition-all duration-300 animate-slide-up;
+  }
+  
+  .user-message {
+    @apply bg-primary text-white ml-auto;
+    border-bottom-right-radius: 0;
+  }
+  
+  .assistant-message {
+    @apply bg-white border border-gray-100 text-gray-800 mr-auto;
+    border-bottom-left-radius: 0;
+  }
+  
+  .input-container {
+    @apply relative flex items-center bg-white rounded-full border border-gray-200 shadow-md px-3 transition-all focus-within:ring-2 focus-within:ring-primary/50;
+  }
+  
+  .action-button {
+    @apply p-2 rounded-full transition-all duration-200 focus:outline-none;
+  }
+
+  .chat-container {
+    @apply flex flex-col h-full w-full max-w-4xl mx-auto px-4 py-8 overflow-hidden;
+  }
+}

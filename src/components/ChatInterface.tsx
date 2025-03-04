@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Camera, Mic, X, LoaderCircle, MessageCircle } from 'lucide-react';
+import { Send, Camera, Mic, X, LoaderCircle, Sparkles, MessageCircle } from 'lucide-react';
 import axios from 'axios';
 
 // You will need to set these values from environment variables or a config
@@ -13,7 +13,35 @@ interface Message {
   timestamp: Date;
 }
 
-const ChatInterface: React.FC = () => {
+interface ChatInterfaceProps {
+  setAppState: (activated: string) => void;
+}
+
+const startSpeechRecognition = (callback: (transcript: string) => void) => {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    console.error('Speech recognition not supported in this browser.');
+    return null;
+  }
+
+  const recognition = new SpeechRecognition();
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.lang = 'es-ES';
+
+  recognition.onresult = (event: SpeechRecognitionEvent) => {
+    const transcript = Array.from(event.results)
+      .map(result => result[0].transcript)
+      .join('');
+
+    callback(transcript);
+  };
+
+  recognition.start();
+  return recognition;
+};
+
+const ChatInterface: React.FC<ChatInterfaceProps> = ({setAppState}) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -25,7 +53,7 @@ const ChatInterface: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   
   useEffect(() => {
     scrollToBottom();
@@ -53,7 +81,7 @@ const ChatInterface: React.FC = () => {
               Authorization: `Bearer ${CHATBASE_API_KEY}`,
               'Content-Type': 'application/json',
             },
-            responseType: 'text', // Changed to text for proper handling
+            responseType: 'text',
           }
         );
         
@@ -111,7 +139,7 @@ const ChatInterface: React.FC = () => {
         {
           messages: chatbaseMessages,
           chatbotId: CHATBASE_CHAT_ID,
-          stream: false, // Set to false for now for simplicity
+          stream: false,
           temperature: 0,
         },
         {
@@ -121,6 +149,21 @@ const ChatInterface: React.FC = () => {
           }
         }
       );
+
+      if (response.data?.text.includes("Datos obtenidos correctamente")) {
+        /*
+        await axios.post("/sendForm", {
+          "idDocument": "FIC80142",
+          "name": "Marta Galeano Grijalba",
+          "carPlate": "0000BBB",
+          "description": "Descripción detallada de lo ocurrido, incluyendo los daños y las horas."
+        })
+          */
+        setTimeout(() => {
+          setAppState('completed');
+        }, 5000)
+        
+      }
       
       // Add bot response
       setMessages(prev => [...prev, {
@@ -147,6 +190,21 @@ const ChatInterface: React.FC = () => {
     }
   };
 
+  const startRecording = () => {
+    const recognition = startSpeechRecognition((transcript) => {
+      setInputValue(transcript);
+    });
+    
+    if (recognition) {
+      recognitionRef.current = recognition;
+      setIsRecording(true);
+      
+      recognition.onend = () => {
+        setIsRecording(false);
+      };
+    }
+  };
+
   const stopSpeechRecognition = () => {
     if (recognitionRef.current) {
       recognitionRef.current.stop();
@@ -159,7 +217,7 @@ const ChatInterface: React.FC = () => {
     if (isRecording) {
       stopSpeechRecognition();
     } else {
-      startSpeechRecognition();
+      startRecording();
     }
   };
 
@@ -193,72 +251,55 @@ const ChatInterface: React.FC = () => {
       handleSendMessage();
     }
   };
+
   const formatTimestamp = (date: Date) => {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
+  const focusInput = () => {
+    inputRef.current?.focus();
+  };
+
   return (
-    <div 
-      ref={chatContainerRef}
-      className="flex flex-col h-full w-full max-w-3xl mx-auto bg-gradient-to-br from-black/30 to-black/40 backdrop-blur-lg rounded-2xl overflow-hidden border border-white/20 shadow-[0_8px_32px_rgba(0,0,0,0.25)] text-white transition-all duration-300 ease-in-out"
-    >
-      {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-black/40">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
-            <MessageCircle size={20} className="text-white" />
+    <div className="chat-container">
+      {/* Welcome Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center space-x-2">
+          <div className="bg-primary/10 p-2 rounded-full">
+            <MessageCircle size={24} className="text-primary" />
           </div>
-          <div>
-            <h2 className="font-bold text-lg">AutoRescue</h2>
-            <p className="text-xs text-gray-300">Asistente para partes de accidente</p>
-          </div>
+          <h1 className="text-2xl font-medium">AutoRescue Assistant</h1>
         </div>
-        <div className="flex space-x-1">
-          <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-          <span className="text-xs text-gray-300">En línea</span>
+        <div className="flex items-center space-x-1 text-sm text-gray-500">
+          <Sparkles size={16} className="text-primary" />
+          <span>AI powered</span>
         </div>
       </div>
       
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-transparent to-black/10">
+      <div className="flex-1 overflow-y-auto space-y-4 overflow-x-hidden bg-chat-pattern p-4 rounded-2xl backdrop-blur-sm">
         {initialLoading ? (
-          <div className="flex flex-col items-center justify-center h-full py-10">
-            <LoaderCircle size={40} className="text-blue-400 animate-spin mb-4" />
-            <p className="text-gray-300 animate-pulse">Iniciando conversación...</p>
+          <div className="flex items-center justify-center h-32">
+            <LoaderCircle className="animate-spin text-primary" size={32} />
           </div>
         ) : messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full py-10 text-center">
-            <div className="w-16 h-16 mb-4 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
-              <MessageCircle size={32} className="text-white" />
-            </div>
-            <h3 className="text-xl font-bold mb-2">¡Bienvenido a AutoRescue!</h3>
-            <p className="text-gray-300 max-w-md">
-              Estoy aquí para ayudarte con el parte de accidente. ¿En qué puedo asistirte hoy?
-            </p>
+          <div className="flex flex-col items-center justify-center h-full text-gray-400 space-y-3">
+            <MessageCircle size={48} className="text-gray-300" />
+            <p>Envía un mensaje para comenzar a chatear</p>
           </div>
         ) : (
           <>
             {messages.map((message, index) => (
               <div 
-                key={index} 
-                className={`flex flex-col ${message.role === 'user' ? 'items-end' : 'items-start'} animate-fade-in`}
+                key={index}
+                className={`message-container ${message.role === 'user' ? 'flex justify-end' : 'flex justify-start'}`}
+                style={{ animationDelay: `${index * 0.1}s` }}
               >
-                <div 
-                  className={`max-w-[85%] p-3.5 rounded-2xl shadow-md ${
-                    message.role === 'user' 
-                      ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-tr-none transform hover:scale-[1.01] transition-transform' 
-                      : 'bg-gradient-to-r from-gray-700/90 to-gray-800/90 text-white rounded-tl-none border border-white/5'
-                  }`}
-                >
-                  {message.content}
-                </div>
-                <div className="flex items-center space-x-2 mt-1 px-1">
-                  {message.role === 'assistant' && (
-                    <div className="w-5 h-5 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs">
-                      A
-                    </div>
-                  )}
-                  <span className="text-xs text-gray-400">
+                <div className="flex flex-col max-w-[80%]">
+                  <div className={`message-bubble ${message.role === 'user' ? 'user-message' : 'assistant-message'}`}>
+                    {message.content}
+                  </div>
+                  <span className={`text-xs text-gray-500 mt-1 ${message.role === 'user' ? 'text-right mr-1' : 'ml-1'}`}>
                     {formatTimestamp(message.timestamp)}
                   </span>
                 </div>
@@ -266,31 +307,31 @@ const ChatInterface: React.FC = () => {
             ))}
             
             {isStreaming && (
-              <div className="flex flex-col items-start animate-fade-in">
-                <div className="max-w-[85%] p-3.5 rounded-2xl shadow-md bg-gradient-to-r from-gray-700/90 to-gray-800/90 text-white rounded-tl-none border border-white/5">
-                  <div className="flex items-center space-x-2">
-                    <div className="flex space-x-1">
-                      <span className="w-2 h-2 rounded-full bg-gray-400 animate-pulse"></span>
-                      <span className="w-2 h-2 rounded-full bg-gray-400 animate-pulse delay-100"></span>
-                      <span className="w-2 h-2 rounded-full bg-gray-400 animate-pulse delay-200"></span>
+              <div className="flex justify-start">
+                <div className="flex flex-col max-w-[80%]">
+                  <div className="message-bubble assistant-message">
+                    <div className="flex space-x-2 items-center">
+                      <div className="w-2 h-2 bg-primary/60 rounded-full animate-pulse"></div>
+                      <div className="w-2 h-2 bg-primary/60 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                      <div className="w-2 h-2 bg-primary/60 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
                     </div>
-                    <span className="text-sm text-gray-300">Escribiendo</span>
                   </div>
                 </div>
               </div>
             )}
           </>
         )}
-        <div ref={messagesEndRef} />
+        <div ref={messagesEndRef} className="h-4" />
       </div>
       
       {/* Input Area */}
-      <div className="p-4 border-t border-white/10 bg-black/50 backdrop-blur-md">
-        <div className="flex items-center space-x-3">
+      <div className="mt-4">
+        {/* Input Container with Frosted Glass Effect */}
+        <div className="input-container h-12">
           <button 
             onClick={triggerImageUpload}
-            className="p-2.5 rounded-full text-gray-300 hover:text-white hover:bg-blue-600/30 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-            title="Subir imagen"
+            className="action-button text-gray-400 hover:text-primary"
+            aria-label="Upload image"
           >
             <Camera size={20} />
           </button>
@@ -303,67 +344,71 @@ const ChatInterface: React.FC = () => {
             className="hidden" 
           />
           
-          <div className="flex-1 relative">
+          <div className="flex-1 relative mx-2">
             <textarea
+              ref={inputRef}
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Escribe un mensaje..."
-              className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-none text-white placeholder-gray-400 shadow-inner transition-all duration-200"
+              className="w-full bg-transparent border-none focus:outline-none resize-none py-2 max-h-24"
               rows={1}
-              style={{ minHeight: '50px', maxHeight: '120px' }}
-              disabled={isLoading || initialLoading}
             />
             
             {isRecording && (
-              <button 
-                onClick={stopSpeechRecognition}
-                className="absolute right-3 top-3 p-1.5 rounded-full bg-red-500 text-white hover:bg-red-600 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500/50"
-                title="Detener grabación"
-              >
-                <X size={16} />
-              </button>
+              <div className="absolute right-0 top-1/2 transform -translate-y-1/2 flex items-center space-x-2">
+                <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse-slow"></div>
+                <button 
+                  onClick={stopSpeechRecognition}
+                  className="p-1 rounded-full bg-red-100 text-red-500 hover:bg-red-200 transition-colors"
+                  aria-label="Stop recording"
+                >
+                  <X size={14} />
+                </button>
+              </div>
             )}
           </div>
           
-          <button
-            onClick={toggleRecording}
-            className={`p-2.5 rounded-full transition-all duration-200 focus:outline-none focus:ring-2 ${
-              isRecording 
-                ? 'bg-red-500 text-white focus:ring-red-500/50' 
-                : 'text-gray-300 hover:text-white hover:bg-blue-600/30 focus:ring-blue-500/50'
-            }`}
-            disabled={isLoading || initialLoading}
-            title={isRecording ? "Detener grabación" : "Iniciar grabación de voz"}
-          >
-            <Mic size={20} />
-          </button>
-          
-          <button
-            onClick={handleSendMessage}
-            disabled={isLoading || initialLoading || inputValue.trim() === ''}
-            className={`p-2.5 rounded-full focus:outline-none focus:ring-2 transition-all duration-200 ${
-              isLoading || initialLoading || inputValue.trim() === '' 
-                ? 'bg-gray-700/50 text-gray-500 cursor-not-allowed' 
-                : 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:shadow-lg hover:from-blue-500 hover:to-blue-600 focus:ring-blue-500/50 transform hover:scale-105'
-            }`}
-            title="Enviar mensaje"
-          >
-            {isLoading ? (
-              <LoaderCircle size={20} className="animate-spin" />
-            ) : (
-              <Send size={20} />
-            )}
-          </button>
+          <div className="flex items-center space-x-1">
+            <button
+              onClick={toggleRecording}
+              className={`action-button ${
+                isRecording 
+                  ? 'text-red-500 bg-red-50' 
+                  : 'text-gray-400 hover:text-primary'
+              }`}
+              aria-label={isRecording ? "Stop recording" : "Start recording"}
+            >
+              <Mic size={20} />
+            </button>
+            
+            <button
+              onClick={handleSendMessage}
+              disabled={isLoading || inputValue.trim() === ''}
+              className={`action-button ${
+                isLoading || inputValue.trim() === '' 
+                  ? 'text-gray-300 cursor-not-allowed' 
+                  : 'text-primary hover:bg-primary/10'
+              }`}
+              aria-label="Send message"
+            >
+              {isLoading ? (
+                <LoaderCircle size={20} className="animate-spin" />
+              ) : (
+                <Send size={20} />
+              )}
+            </button>
+          </div>
         </div>
         
-        {/* Status indicator */}
-        <div className="flex justify-center mt-2">
-          <p className="text-xs text-gray-400">
-            {isLoading ? 'Procesando mensaje...' : 
-             isRecording ? 'Grabando audio...' : 
-             ''}
-          </p>
+        {/* Click anywhere to focus hint */}
+        <div className="text-center mt-2">
+          <button 
+            onClick={focusInput}
+            className="text-xs text-gray-400 hover:text-primary transition-colors"
+          >
+            Haz clic para escribir
+          </button>
         </div>
       </div>
     </div>

@@ -17,7 +17,7 @@ type AppState =
   | 'completed';       // Assistance completed
 
 const Index = () => {
-  const [appState, setAppState] = useState<AppState>('chat');
+  const [appState, setAppState] = useState<AppState>('initial');
   const [processingMessage, setProcessingMessage] = useState("Procesando su solicitud...");
 
   // Handle emergency button click
@@ -89,7 +89,7 @@ const Index = () => {
         return (
           <div className="h-full flex items-center justify-center">
             <Card className="w-full max-w-xl h-[85vh] glass overflow-hidden">
-              <ChatInterface />
+              <ChatInterface setAppState={setAppState} />
             </Card>
           </div>
         );
