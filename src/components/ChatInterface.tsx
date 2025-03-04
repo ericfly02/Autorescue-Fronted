@@ -68,7 +68,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({setAppState}) => {
           {
             messages:[
               {
-                content: "hola",
+                content: "hi",
                 role: "user"
               },
             ],
@@ -87,7 +87,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({setAppState}) => {
         
         // Initial welcome message
         setMessages([{
-          content: response.data || "¡Hola! Soy el asistente de AutoRescue. ¿En qué puedo ayudarte hoy?",
+          content: response.data || "Hi it's Maria your virtual AutoRescue Assistant how can I help you today?",
           role: 'assistant',
           timestamp: new Date()
         }]);
@@ -95,7 +95,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({setAppState}) => {
         console.error('Error fetching initial message:', error);
         // Fallback welcome message
         setMessages([{
-          content: "¡Hola! Soy el asistente de AutoRescue. ¿En qué puedo ayudarte con el parte de accidente?",
+          content: "Hi it's Maria your virtual AutoRescue Assistant how can I help you today?",
           role: 'assistant',
           timestamp: new Date()
         }]);
@@ -150,13 +150,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({setAppState}) => {
         }
       );
 
-      if (response.data?.text.includes("Datos obtenidos correctamente")) {
+      if (response.data?.text.includes("Data obtained correctly")) {
         
         await axios.post("http://127.0.0.1:8084/api/autorescue/sendForm", {
           "idDocument": "FIC80142",
           "name": "Marta Galeano Grijalba",
           "carPlate": "0000BBB",
-          "description": "Golpe leve frontal a las 10 de la mañana en plaza españa con un seat panda blanco"
+          "description": "At 10:00 AM, a minor frontal collision occurred at Plaza España involving a white Seat Panda."
         })
         
         setTimeout(() => {
@@ -167,7 +167,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({setAppState}) => {
       
       // Add bot response
       setMessages(prev => [...prev, {
-        content: response.data?.text || "Lo siento, hubo un problema al procesar tu solicitud.",
+        content: response.data?.text || "Sorry ther's been an error processign your request",
         role: 'assistant',
         timestamp: new Date()
       }]);
@@ -177,7 +177,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({setAppState}) => {
       
       // Add error message
       const errorMessage: Message = {
-        content: 'Lo siento, hubo un error al procesar tu solicitud.',
+        content: "Sorry ther's been an error processign your request",
         role: 'assistant',
         timestamp: new Date()
       };
@@ -407,7 +407,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({setAppState}) => {
             onClick={focusInput}
             className="text-xs text-gray-400 hover:text-primary transition-colors"
           >
-            Haz clic para escribir
+            Cloick to start
           </button>
         </div>
       </div>

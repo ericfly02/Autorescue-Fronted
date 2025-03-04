@@ -31,10 +31,10 @@ const Index = () => {
     setProcessingMessage("Verificando su solicitud...");
 
     if (activated) {
-      await axios.post("http://127.0.0.1:8084/api/autorescue/needHelp", { serialNumber: "1HGCM82633A123456" })
+      //await axios.post("http://127.0.0.1:8084/api/autorescue/needHelp", { serialNumber: "1HGCM82633A123456" })
       setAppState('completed');
     } else {
-      await axios.post("http://127.0.0.1:8084/api/autorescue/deviceStatus", { serialNumber: "1HGCM82633A123456" })
+      //await axios.post("http://127.0.0.1:8084/api/autorescue/deviceStatus", { serialNumber: "1HGCM82633A123456" })
       setAppState('chat');
     }
   };
@@ -48,7 +48,7 @@ const Index = () => {
             <Card className="w-full max-w-md p-8 glass text-center space-y-6">
               <h1 className="text-3xl font-bold">AutoRescue</h1>
               <p className="text-muted-foreground">
-                Simulador de accidente
+                Car accident simulator
               </p>
 
               <div className="py-6">
@@ -64,7 +64,7 @@ const Index = () => {
               </div>
 
               <p className="text-sm text-muted-foreground">
-                Pulse el botón para simular un accidente con el coche
+                Press the button to simulate a car accident
               </p>
             </Card>
           </div>
@@ -101,16 +101,16 @@ const Index = () => {
               <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
                 <Shield size={32} className="text-primary" />
               </div>
-              <h2 className="text-2xl font-bold">Asistencia Completada</h2>
+              <h2 className="text-2xl font-bold">Assistance Completed</h2>
               <p className="text-muted-foreground">
-                Gracias por utilizar AutoRescue. Su información ha sido procesada correctamente.
+                Thanks for using AutoRescue. Your information has been processed successfully.
               </p>
             </Card>
           </div>
         );
 
       default:
-        return <div>Estado no reconocido</div>;
+        return <div>State not recognized</div>;
     }
   };
 
@@ -126,7 +126,7 @@ const Index = () => {
           {appState !== 'initial' && appState !== 'completed' && (
             <div className="flex items-center text-xs text-muted-foreground">
               <div className="w-2 h-2 bg-primary rounded-full animate-pulse mr-1"></div>
-              Asistencia activa
+              Assistente active
             </div>
           )}
         </div>
@@ -137,7 +137,7 @@ const Index = () => {
       </main>
 
       <footer className="p-4 text-center text-sm text-muted-foreground border-t border-border/50">
-        <p>© 2025 AutoRescue · Asistencia en accidentes de tráfico</p>
+        <p>© 2025 AutoRescue · Your Accident Report Assistant</p>
       </footer>
     </div>
   );

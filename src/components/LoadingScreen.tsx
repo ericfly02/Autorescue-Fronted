@@ -7,7 +7,7 @@ interface LoadingScreenProps {
 }
 
 const LoadingScreen: React.FC<LoadingScreenProps> = ({ 
-  message = "Procesando su solicitud..." 
+  message = "Processing request..." 
 }) => {
   return (
     <div className="fixed inset-0 flex flex-col items-center justify-center bg-background/95 backdrop-blur-sm z-50 animate-fade-in">

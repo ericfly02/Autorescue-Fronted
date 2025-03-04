@@ -12,7 +12,7 @@ interface VoiceRecognitionProps {
 const VoiceRecognition: React.FC<VoiceRecognitionProps> = ({
   onRecognized,
   isListening,
-  activationPhrase = "sí",
+  activationPhrase = "yes",
   deactivatePhrase = "no"
 }) => {
   const [transcript, setTranscript] = useState<string>("");
@@ -33,7 +33,7 @@ const VoiceRecognition: React.FC<VoiceRecognitionProps> = ({
     const recognition = recognitionRef.current;
     recognition.continuous = true;
     recognition.interimResults = true;
-    recognition.lang = 'es-ES'; // Spanish language
+    recognition.lang = 'en-US'; // english language
 
     recognition.onresult = (event) => {
       let interimTranscript = '';
